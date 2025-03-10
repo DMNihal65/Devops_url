@@ -1,0 +1,15 @@
+@import "tailwindcss";
+
+#root {
+  width: 100%;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.ant-btn-primary {
+  background-color: #1677ff;
+}
+
+.ant-btn-primary:hover {
+  background-color: #4096ff !important;
+}
