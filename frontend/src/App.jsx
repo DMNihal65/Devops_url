@@ -6,7 +6,7 @@ import './App.css'
 const { Header, Content, Footer } = Layout
 const { Title, Text } = Typography
 
-// Use a relative URL or environment variable for the API endpoint
+// Use the correct host port (8002)
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
 function App() {

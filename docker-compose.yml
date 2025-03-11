@@ -6,9 +6,16 @@ services:
       context: ./api
       dockerfile: Dockerfile
     ports:
-      - "8002:8000"
+      - "8000:8000"
     networks:
       - url-shortener-network
+    depends_on:
+      - db
+      - redis
+      - analytics
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/urlshortener
+      - REDIS_URL=redis://redis:6379/0
     restart: unless-stopped
 
   frontend:
@@ -19,6 +26,61 @@ services:
       - "82:80"
     depends_on:
       - api
+    environment:
+      - REACT_APP_API_URL=http://localhost:8000
+    networks:
+      - url-shortener-network
+    restart: unless-stopped
+
+  db:
+    image: postgres:14-alpine
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=urlshortener
+    ports:
+      - "5432:5432"
+    networks:
+      - url-shortener-network
+    restart: unless-stopped
+
+  analytics-db:
+    image: postgres:14-alpine
+    volumes:
+      - analytics_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=analytics
+    ports:
+      - "5433:5432"
+    networks:
+      - url-shortener-network
+    restart: unless-stopped
+
+  analytics:
+    build:
+      context: ./analytics
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8001"
+    networks:
+      - url-shortener-network
+    depends_on:
+      - analytics-db
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@analytics-db:5432/analytics
+    restart: unless-stopped
+
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
     networks:
       - url-shortener-network
     restart: unless-stopped
@@ -26,3 +88,8 @@ services:
 networks:
   url-shortener-network:
     driver: bridge
+
+volumes:
+  postgres_data:
+  analytics_data:
+  redis_data:
