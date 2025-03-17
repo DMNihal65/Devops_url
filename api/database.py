@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, func
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean, func
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 import os
@@ -25,6 +25,7 @@ class URL(Base):
     clicks = Column(Integer, default=0)
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    expired = Column(Boolean, default=False)
 
 # Create tables
 def create_tables():
@@ -36,4 +37,7 @@ def get_db():
     try:
         yield db
     finally:
-        db.close() 
+        db.close()
+
+# Add this line at the end of the file to export DATABASE_URL
+__all__ = ['get_db', 'URL', 'create_tables', 'Base', 'DATABASE_URL'] 

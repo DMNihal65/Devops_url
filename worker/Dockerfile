@@ -26,9 +26,9 @@ ENV PATH="/opt/venv/bin:$PATH" \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
-# Install curl for health check and PostgreSQL client libraries
+# Install PostgreSQL client libraries and curl for health check
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends curl libpq-dev && \
+    apt-get install -y --no-install-recommends libpq-dev curl && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
@@ -39,12 +39,13 @@ COPY . .
 RUN mkdir -p /app/logs && \
     chmod 777 /app/logs
 
-# Expose port 8001
-EXPOSE 8001
+# Add a health check script
+COPY healthcheck.sh /healthcheck.sh
+RUN chmod +x /healthcheck.sh
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8001/ || exit 1
+    CMD /healthcheck.sh
 
-# Command to run the application
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8001"] 
+# Command to run the worker
+CMD ["python", "app.py"] 

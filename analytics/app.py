@@ -6,8 +6,23 @@ from sqlalchemy import func
 import uvicorn
 from datetime import datetime
 import os
+import logging
 
 from database import get_db, ClickEvent, create_tables
+
+# Create logs directory if it doesn't exist
+os.makedirs("logs", exist_ok=True)
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler("logs/analytics.log"),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger("url-shortener-analytics")
 
 app = FastAPI(title="URL Shortener Analytics Service")
 

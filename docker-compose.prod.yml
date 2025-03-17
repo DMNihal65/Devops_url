@@ -2,9 +2,7 @@ version: '3.8'
 
 services:
   api:
-    build:
-      context: ./api
-      dockerfile: Dockerfile
+    image: dmnihal/url-shortener-api:latest
     ports:
       - "8000:8000"
     networks:
@@ -18,26 +16,28 @@ services:
       - REDIS_URL=redis://redis:6379/0
     volumes:
       - api_logs:/app/logs
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
     restart: unless-stopped
 
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
+    image: dmnihal/url-shortener-frontend:latest
     ports:
-      - "82:80"
+      - "80:80"
     depends_on:
       - api
     environment:
       - REACT_APP_API_URL=http://localhost:8000
     volumes:
       - nginx_logs:/var/log/nginx
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: 256M
     networks:
       - url-shortener-network
     restart: unless-stopped
@@ -51,6 +51,11 @@ services:
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_USER=postgres
       - POSTGRES_DB=urlshortener
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
     ports:
       - "5432:5432"
     networks:
@@ -66,6 +71,11 @@ services:
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_USER=postgres
       - POSTGRES_DB=analytics
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
     ports:
       - "5433:5432"
     networks:
@@ -73,9 +83,7 @@ services:
     restart: unless-stopped
 
   analytics:
-    build:
-      context: ./analytics
-      dockerfile: Dockerfile
+    image: dmnihal/url-shortener-analytics:latest
     ports:
       - "8001:8001"
     networks:
@@ -86,21 +94,21 @@ services:
       - DATABASE_URL=postgresql://postgres:postgres@analytics-db:5432/analytics
     volumes:
       - analytics_logs:/app/logs
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: 256M
     restart: unless-stopped
 
   worker:
-    build:
-      context: ./worker
-      dockerfile: Dockerfile
+    image: dmnihal/url-shortener-worker:latest
     networks:
       - url-shortener-network
     depends_on:
-      api:
-        condition: service_healthy
-      db:
-        condition: service_started
-      redis:
-        condition: service_started
+      - api
+      - db
+      - redis
     environment:
       - API_URL=http://api:8000
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/urlshortener
@@ -108,6 +116,11 @@ services:
       - URL_EXPIRY_DAYS=30
     volumes:
       - worker_logs:/app/logs
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 128M
     restart: unless-stopped
 
   redis:
@@ -118,6 +131,11 @@ services:
       - redis_data:/data
       - redis_logs:/var/log/redis
     command: redis-server --appendonly yes
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: 256M
     networks:
       - url-shortener-network
     restart: unless-stopped
@@ -136,4 +154,4 @@ volumes:
   analytics_db_logs:
   analytics_logs:
   worker_logs:
-  redis_logs:
+  redis_logs: 

@@ -7,10 +7,27 @@ import string
 import uvicorn
 from typing import Optional, Dict, Any
 import asyncio
+import logging
+import os
+import psycopg2
 
-from database import get_db, URL, create_tables
+from database import get_db, URL, create_tables, DATABASE_URL
 from cache import get_cache, set_cache, delete_cache, increment_counter
 from analytics import send_click_event
+
+# Create logs directory if it doesn't exist
+os.makedirs("logs", exist_ok=True)
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler("logs/api.log"),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger("url-shortener-api")
 
 app = FastAPI(title="URL Shortener API")
 
@@ -27,6 +44,35 @@ app.add_middleware(
 @app.on_event("startup")
 def startup_event():
     create_tables()
+    # Run migration to add expired column
+    try:
+        # Connect to the database
+        conn = psycopg2.connect(DATABASE_URL)
+        conn.autocommit = True
+        cursor = conn.cursor()
+        
+        # Check if column already exists
+        cursor.execute("""
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name='urls' AND column_name='expired';
+        """)
+        
+        if cursor.fetchone() is None:
+            # Add the expired column
+            cursor.execute("""
+                ALTER TABLE urls 
+                ADD COLUMN expired BOOLEAN DEFAULT FALSE;
+            """)
+            logger.info("Added 'expired' column to urls table")
+        else:
+            logger.info("Column 'expired' already exists")
+            
+        # Close connection
+        cursor.close()
+        conn.close()
+    except Exception as e:
+        logger.error(f"Error running migration: {e}")
 
 class URLBase(BaseModel):
     target_url: HttpUrl
@@ -110,6 +156,9 @@ async def redirect_to_url(
     
     if not db_url:
         raise HTTPException(status_code=404, detail="URL not found")
+    
+    if db_url.expired:
+        raise HTTPException(status_code=410, detail="URL has expired")
     
     # Increment click count
     db_url.clicks += 1

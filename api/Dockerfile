@@ -35,6 +35,10 @@ RUN apt-get update && \
 # Copy application code
 COPY . .
 
+# Create logs directory and set permissions
+RUN mkdir -p /app/logs && \
+    chmod 777 /app/logs
+
 # Create non-root user for security
 RUN adduser --disabled-password --gecos "" appuser && \
     chown -R appuser:appuser /app
@@ -46,7 +50,7 @@ USER appuser
 EXPOSE 8000
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
+HEALTHCHECK --interval=10s --timeout=5s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:8000/ || exit 1
 
 # Command to run the application
